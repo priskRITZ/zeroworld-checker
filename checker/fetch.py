@@ -245,12 +245,20 @@ class ZeroworldFetcher:
         try:
             # API 응답 구조 분석
             if 'data' in api_data:
+                # 모든 테마 목록 로깅 (디버깅용)
+                logger.info("🎯 사용 가능한 모든 테마:")
+                for i, theme in enumerate(api_data.get('data', [])):
+                    theme_title = theme.get('title', 'N/A')
+                    theme_pk = theme.get('PK', 'N/A')
+                    logger.info(f"  {i+1}. '{theme_title}' (PK: {theme_pk})")
+                
                 # 테마 목록에서 지정된 테마 찾기
                 theme_pk = None
                 for theme in api_data.get('data', []):
-                    if THEME_NAME in theme.get('title', ''):
+                    theme_title = theme.get('title', '')
+                    if THEME_NAME in theme_title or theme_title in THEME_NAME:
                         theme_pk = theme.get('PK')
-                        logger.info(f"'{THEME_NAME}' 테마 발견: PK={theme_pk}")
+                        logger.info(f"✅ '{THEME_NAME}' 테마 발견: '{theme_title}' (PK={theme_pk})")
                         break
                 
                 if theme_pk and 'times' in api_data:

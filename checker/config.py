@@ -29,6 +29,13 @@ TIMEZONE = "Asia/Seoul"
 RUN_HOURS = range(0, 24)  # 24시간 무제한 모니터링
 CHECK_INTERVAL_MINUTES = 1
 
+# Railway 환경에서 한국 시간대 강제 설정
+import os
+if os.getenv("RAILWAY_ENVIRONMENT_NAME"):
+    os.environ['TZ'] = 'Asia/Seoul'
+    import time
+    time.tzset() if hasattr(time, 'tzset') else None
+
 # 파일 경로
 # 클라우드 환경 감지
 IS_CLOUD = os.getenv("RAILWAY_ENVIRONMENT_NAME") is not None or os.getenv("RENDER") is not None
