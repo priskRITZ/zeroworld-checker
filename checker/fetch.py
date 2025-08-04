@@ -208,6 +208,12 @@ class ZeroworldFetcher:
                     api_data = api_response.json()
                     logger.info(f"API 응답 성공: {len(str(api_data))} 문자")
                     
+                    # 🔍 API 응답 구조 디버깅
+                    logger.info(f"🔍 API 응답 최상위 키: {list(api_data.keys())}")
+                    if 'data' in api_data:
+                        logger.info(f"🔍 data 필드 타입: {type(api_data['data'])}")
+                        logger.info(f"🔍 data 필드 길이: {len(api_data['data']) if isinstance(api_data['data'], (list, dict)) else 'N/A'}")
+                    
                     # API 데이터와 숨겨진 데이터 모두 반환
                     return (api_data, hidden_data)
                     
@@ -243,53 +249,67 @@ class ZeroworldFetcher:
         slots = {}
         
         try:
+            # 🔍 전체 API 응답 디버깅
+            logger.info(f"🔍 API 데이터 전체 구조:")
+            logger.info(f"  - 최상위 키: {list(api_data.keys())}")
+            
             # API 응답 구조 분석
             if 'data' in api_data:
+                data_content = api_data.get('data', [])
+                logger.info(f"🔍 data 필드 내용: {type(data_content)}, 길이: {len(data_content) if hasattr(data_content, '__len__') else 'N/A'}")
+                
                 # 모든 테마 목록 로깅 (디버깅용)
                 logger.info("🎯 사용 가능한 모든 테마:")
-                for i, theme in enumerate(api_data.get('data', [])):
-                    theme_title = theme.get('title', 'N/A')
-                    theme_pk = theme.get('PK', 'N/A')
-                    logger.info(f"  {i+1}. '{theme_title}' (PK: {theme_pk})")
+                for i, theme in enumerate(data_content):
+                    if isinstance(theme, dict):
+                        theme_title = theme.get('title', 'N/A')
+                        theme_pk = theme.get('PK', 'N/A')
+                        logger.info(f"  {i+1}. '{theme_title}' (PK: {theme_pk})")
+                    else:
+                        logger.info(f"  {i+1}. 비표준 테마 데이터: {theme}")
                 
                 # 테마 목록에서 지정된 테마 찾기
                 theme_pk = None
-                for theme in api_data.get('data', []):
-                    theme_title = theme.get('title', '')
-                    if THEME_NAME in theme_title or theme_title in THEME_NAME:
-                        theme_pk = theme.get('PK')
-                        logger.info(f"✅ '{THEME_NAME}' 테마 발견: '{theme_title}' (PK={theme_pk})")
-                        break
+                for theme in data_content:
+                    if isinstance(theme, dict):
+                        theme_title = theme.get('title', '')
+                        if THEME_NAME in theme_title or theme_title in THEME_NAME:
+                            theme_pk = theme.get('PK')
+                            logger.info(f"✅ '{THEME_NAME}' 테마 발견: '{theme_title}' (PK={theme_pk})")
+                            break
+            else:
+                logger.warning("🚨 API 응답에 'data' 필드가 없습니다!")
+                logger.info(f"🔍 전체 API 응답 샘플: {str(api_data)[:500]}...")
+            
+            if theme_pk and 'times' in api_data:
+                # 해당 테마의 시간 슬롯 정보 가져오기
+                theme_times = api_data['times'].get(str(theme_pk), [])
                 
-                if theme_pk and 'times' in api_data:
-                    # 해당 테마의 시간 슬롯 정보 가져오기
-                    theme_times = api_data['times'].get(str(theme_pk), [])
+                logger.debug(f"=== {target_date} {THEME_NAME} 테마 슬롯 처리 ===")
+                logger.debug(f"총 슬롯 수: {len(theme_times)}")
+                logger.debug(f"숨겨진 데이터 키: {list(hidden_data.keys())}")
+                
+                for i, time_slot in enumerate(theme_times):
+                    time_str = time_slot.get('time', '')
+                    api_reservation = time_slot.get('reservation', False)
                     
-                    logger.debug(f"=== {target_date} {THEME_NAME} 테마 슬롯 처리 ===")
-                    logger.debug(f"총 슬롯 수: {len(theme_times)}")
-                    logger.debug(f"숨겨진 데이터 키: {list(hidden_data.keys())}")
-                    
-                    for i, time_slot in enumerate(theme_times):
-                        time_str = time_slot.get('time', '')
-                        api_reservation = time_slot.get('reservation', False)
+                    if time_str:
+                        slot_key = f"{target_date} {time_str}"
                         
-                        if time_str:
-                            slot_key = f"{target_date} {time_str}"
-                            
-                            # **핵심 로직**: API 데이터와 숨겨진 데이터 조합
-                            is_available = self._is_really_available(
-                                theme_pk, time_str, target_date, 
-                                hidden_data, api_reservation
-                            )
-                            
-                            slot_status = "예약가능" if is_available else "매진"
-                            slots[slot_key] = slot_status
-                            
-                            logger.debug(f"  슬롯 {i+1}: {time_str} = {slot_status}")
-                            
-                    logger.info(f"'{THEME_NAME}' 슬롯 {len(slots)}개 추출 완료")
-                else:
-                    logger.warning(f"'{THEME_NAME}' 테마를 찾을 수 없습니다")
+                        # **핵심 로직**: API 데이터와 숨겨진 데이터 조합
+                        is_available = self._is_really_available(
+                            theme_pk, time_str, target_date, 
+                            hidden_data, api_reservation
+                        )
+                        
+                        slot_status = "예약가능" if is_available else "매진"
+                        slots[slot_key] = slot_status
+                        
+                        logger.debug(f"  슬롯 {i+1}: {time_str} = {slot_status}")
+                        
+                logger.info(f"'{THEME_NAME}' 슬롯 {len(slots)}개 추출 완료")
+            else:
+                logger.warning(f"'{THEME_NAME}' 테마를 찾을 수 없습니다")
             
         except Exception as e:
             logger.error(f"슬롯 추출 중 오류: {e}")
