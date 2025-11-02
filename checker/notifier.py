@@ -373,26 +373,25 @@ class TelegramBotHandler:
     
     async def handle_branch_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """
-        /branch 명령어 처리 - Railway 브랜치 전환 및 배포
+        /branch 명령어 처리 - Railway 브랜치 수동 변경 안내
         사용법: /branch main | /branch test
         """
         try:
             user_name = update.effective_user.first_name
-            
+
             # 인자 확인
             if not context.args:
                 help_msg = (
-                    f"🌿 <b>브랜치 전환 명령어</b>\n\n"
+                    f"🌿 <b>브랜치 변경 안내</b>\n\n"
                     f"📖 <b>사용법:</b>\n"
                     f"• <code>/branch main</code> - 메인 브랜치 (층간소음 테마)\n"
-                    f"• <code>/branch test</code> - 테스트 브랜치 (사랑하는감? 테마)\n\n"
-                    f"⚠️ <b>주의:</b> 브랜치 전환 시 새로운 배포가 시작되며 약 2-3분 소요됩니다."
+                    f"• <code>/branch test</code> - 테스트 브랜치 (사랑하는감? 테마)"
                 )
                 await update.message.reply_text(help_msg, parse_mode='HTML')
                 return
-            
+
             branch_name = context.args[0].lower()
-            
+
             # 지원하는 브랜치 확인
             if branch_name not in ["main", "test"]:
                 error_msg = (
@@ -403,48 +402,33 @@ class TelegramBotHandler:
                 )
                 await update.message.reply_text(error_msg, parse_mode='HTML')
                 return
-            
-            # 진행 상황 알림
-            progress_msg = (
-                f"🔄 <b>브랜치 전환 시작</b>\n\n"
-                f"🎯 <b>대상 브랜치:</b> {branch_name}\n"
-                f"🎨 <b>테마:</b> {'층간소음' if branch_name == 'main' else '사랑하는감?'}\n"
-                f"⏳ <b>상태:</b> Railway API 호출 중..."
+
+            # Railway 프로젝트/서비스 ID 가져오기
+            import os
+            project_id = os.getenv("RAILWAY_PROJECT_ID")
+            service_id = os.getenv("RAILWAY_SERVICE_ID")
+
+            settings_url = "https://railway.app"
+            if project_id and service_id:
+                settings_url = f"https://railway.app/project/{project_id}/service/{service_id}?view=settings"
+
+            # 안내 메시지 생성
+            manual_change_msg = (
+                f"🌿 <b>브랜치 수동 변경 안내</b>\n\n"
+                f"현재 자동 브랜치 변경은 지원되지 않습니다.\n"
+                f"대신 아래 링크에서 직접 브랜치를 변경해주세요.\n\n"
+                f"<b>요청 브랜치:</b> {branch_name}\n"
+                f"<b>변경될 테마:</b> {'층간소음' if branch_name == 'main' else '사랑하는감?'}\n\n"
+                f"<a href='{settings_url}'>🔗 <b>Railway 서비스 설정으로 이동</b></a>\n\n"
+                f"페이지 접속 후 'Service Source'에서 브랜치를 변경하고 'Deploy' 버튼을 누르면 적용됩니다."
             )
-            message = await update.message.reply_text(progress_msg, parse_mode='HTML')
-            
-            # Railway API를 사용한 브랜치 전환
-            from .railway_api import switch_to_branch
-            
-            success = await switch_to_branch(branch_name)
-            
-            if success:
-                success_msg = (
-                    f"✅ <b>브랜치 전환 성공!</b>\n\n"
-                    f"🎯 <b>현재 브랜치:</b> {branch_name}\n"
-                    f"🎨 <b>현재 테마:</b> {'층간소음' if branch_name == 'main' else '사랑하는감?'}\n"
-                    f"👤 <b>실행자:</b> {user_name}\n"
-                    f"⏰ <b>시간:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
-                    f"🚀 새로운 배포가 시작되었습니다. 약 2-3분 후 적용됩니다."
-                )
-                await message.edit_text(success_msg, parse_mode='HTML')
-                logger.info(f"사용자 {user_name}이 브랜치를 '{branch_name}'으로 전환 성공")
-                
-            else:
-                error_msg = (
-                    f"❌ <b>브랜치 전환 실패</b>\n\n"
-                    f"🎯 <b>요청 브랜치:</b> {branch_name}\n"
-                    f"👤 <b>실행자:</b> {user_name}\n"
-                    f"⏰ <b>시간:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
-                    f"🔧 Railway API 호출 중 오류가 발생했습니다.\n"
-                    f"로그를 확인하거나 관리자에게 문의하세요."
-                )
-                await message.edit_text(error_msg, parse_mode='HTML')
-                logger.error(f"사용자 {user_name}의 브랜치 '{branch_name}' 전환 실패")
-                
+
+            await update.message.reply_text(manual_change_msg, parse_mode='HTML', disable_web_page_preview=True)
+            logger.info(f"사용자 {user_name}에게 '{branch_name}' 브랜치 수동 변경을 안내했습니다.")
+
         except Exception as e:
             logger.error(f"/branch 명령어 처리 중 오류: {e}")
-            await update.message.reply_text("❌ 브랜치 전환 명령어 처리 중 오류가 발생했습니다.", parse_mode='HTML')
+            await update.message.reply_text("❌ 명령어 처리 중 오류가 발생했습니다.")
     
     async def handle_all_messages(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """
