@@ -17,6 +17,10 @@ except ValueError:
 
 # 모니터링 대상 설정
 # main 브랜치: "층간소음", test 브랜치: "사랑하는감?"
+BRANCH_THEME_MAPPING = {
+    "main": "층간소음",
+    "test": "사랑하는감?"
+}
 THEME_NAME = "층간소음"  # test 브랜치용
 
 # Date range (starts today and extends LOOKAHEAD_DAYS days)

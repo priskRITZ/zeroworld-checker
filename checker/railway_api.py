@@ -11,6 +11,8 @@ import asyncio
 from typing import Optional, Dict, Any
 from loguru import logger
 
+from .config import BRANCH_THEME_MAPPING
+
 
 class RailwayAPI:
     """Railway GraphQL API 클라이언트"""
