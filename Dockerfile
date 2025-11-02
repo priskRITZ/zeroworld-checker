@@ -7,7 +7,11 @@ WORKDIR /app
 # 시스템 패키지 업데이트 및 필요한 도구 설치
 RUN apt-get update && apt-get install -y \
     gcc \
+    curl \
     && rm -rf /var/lib/apt/lists/*
+
+# Railway CLI 설치
+RUN curl -fsSL https://railway.app/install.sh | sh
 
 # Python 의존성 설치
 COPY requirements.txt .
