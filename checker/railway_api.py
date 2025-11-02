@@ -81,174 +81,62 @@ class RailwayAPI:
         return await self._execute_query(query, variables)
     
     async def get_service_info(self, service_id: str) -> Dict[str, Any]:
-        """서비스 정보 조회 (간단한 스키마)"""
+        """서비스 정보 조회 (service(id: ...) 직접 조회)"""
         query = """
-        query {
-            me {
-                projects {
-                    edges {
-                        node {
-                            id
-                            name
-                            services {
-                                edges {
-                                    node {
-                                        id
-                                        name
-                                    }
-                                }
-                            }
-                        }
-                    }
+        query getService($id: String!) {
+            service(id: $id) {
+                id
+                name
+                source {
+                    repo
+                    branch
                 }
             }
         }
         """
-        
-        logger.info(f"서비스 {service_id} 정보 조회 중 (간단한 스키마)...")
-        result = await self._execute_query(query)
-        logger.info(f"서비스 정보: {result}")
+
+        variables = {"id": service_id}
+        logger.info(f"서비스 {service_id} 정보 조회 중 (service 쿼리)...")
+        result = await self._execute_query(query, variables)
+        logger.info(f"서비스 응답: {result}")
         return result
 
-    async def update_service_branch(self, service_id: str, branch_name: str) -> Dict[str, Any]:
-        """서비스의 GitHub 브랜치 변경 (Railway API v2 스키마 기반)"""
-        
-        # 서비스 정보 먼저 가져오기 (필수 정보 수집)
-        service_info = await self.get_service_info(service_id)
-        current_repo = None
-        current_branch = None
-        
-        if service_info and "data" in service_info and service_info["data"]["service"]:
-            source = service_info["data"]["service"]["source"]
-            if source:
-                current_repo = source.get("repo")
-                current_branch = source.get("branch")
-                logger.info(f"📋 현재 상태 - 리포: {current_repo}, 브랜치: {current_branch}")
-        
-        if not current_repo:
-            raise ValueError("리포지토리 정보를 가져올 수 없습니다. GitHub 연결을 확인하세요.")
-        
-        # 방법 1: serviceSourceUpdate (정확한 Railway v2 API)
-        mutation_v1 = """
-        mutation serviceSourceUpdate($serviceId: String!, $input: ServiceSourceUpdateInput!) {
-            serviceSourceUpdate(serviceId: $serviceId, input: $input) {
-                id
-                name
-                source {
-                    repo
-                    branch
-                }
+    async def update_service_branch(self, service_id: str, branch: str) -> Dict[str, Any]:
+        """서비스의 소스 브랜치 변경"""
+        query = """
+        mutation serviceUpdate($serviceId: String!, $branch: String!) {
+          serviceUpdate(
+            id: $serviceId
+            input: {
+              source: {
+                branch: $branch
+              }
             }
+          ) {
+            id
+          }
         }
         """
-        
-        variables_v1 = {
-            "serviceId": service_id,
-            "input": {
-                "branch": branch_name
-            }
-        }
-        
-        try:
-            logger.info(f"🔄 방법 1: serviceSourceUpdate로 브랜치 '{branch_name}' 변경 시도...")
-            result = await self._execute_query(mutation_v1, variables_v1)
-            logger.info(f"✅ serviceSourceUpdate 성공: {result}")
-            return result
-        except Exception as e:
-            logger.warning(f"⚠️ serviceSourceUpdate 실패: {e}")
-            
-        # 방법 2: serviceConnect (전체 재연결)
-        mutation_v2 = """
-        mutation serviceConnect($id: String!, $input: ServiceConnectInput!) {
-            serviceConnect(id: $id, input: $input) {
-                id
-                name
-                source {
-                    repo
-                    branch
-                }
-            }
-        }
-        """
-        
-        variables_v2 = {
-            "id": service_id,
-            "input": {
-                "repo": current_repo,
-                "branch": branch_name
-            }
-        }
-        
-        try:
-            logger.info(f"🔄 방법 2: serviceConnect로 브랜치 '{branch_name}' 변경 시도...")
-            logger.info(f"📋 연결 정보: repo={current_repo}, branch={branch_name}")
-            result = await self._execute_query(mutation_v2, variables_v2)
-            logger.info(f"✅ serviceConnect 성공: {result}")
-            return result
-        except Exception as e:
-            logger.error(f"❌ serviceConnect도 실패: {e}")
-            
-        # 방법 3: serviceDeploy (브랜치 지정 배포)
-        mutation_v3 = """
-        mutation serviceDeploy($serviceId: String!, $input: ServiceDeployInput!) {
-            serviceDeploy(serviceId: $serviceId, input: $input) {
-                id
-                status
-                createdAt
-            }
-        }
-        """
-        
-        variables_v3 = {
-            "serviceId": service_id,
-            "input": {
-                "branch": branch_name
-            }
-        }
-        
-        try:
-            logger.info(f"🔄 방법 3: serviceDeploy로 브랜치 '{branch_name}' 배포 시도...")
-            result = await self._execute_query(mutation_v3, variables_v3)
-            logger.info(f"✅ serviceDeploy 성공: {result}")
-            return result
-        except Exception as e:
-            logger.error(f"❌ serviceDeploy도 실패: {e}")
-            raise Exception(f"모든 Railway API 방법 실패. 마지막 오류: {e}")
-
+        variables = {"serviceId": service_id, "branch": branch}
+        return await self._execute_query(query, variables)
 
     async def trigger_deployment(self, service_id: str) -> Dict[str, Any]:
         """서비스 재배포 트리거"""
-        mutation = """
-        mutation serviceInstanceRedeploy($serviceId: String!) {
-            serviceInstanceRedeploy(serviceId: $serviceId) {
-                id
-                createdAt
-                status
-            }
+        query = """
+        mutation deploymentTrigger($serviceId: String!) {
+          deploymentTrigger(
+            serviceId: $serviceId
+          ) {
+            id
+            status
+          }
         }
         """
-        
         variables = {"serviceId": service_id}
-        
-        logger.info(f"서비스 {service_id} 재배포 트리거 중...")
-        result = await self._execute_query(mutation, variables)
-        logger.info(f"재배포 트리거 성공: {result}")
-        return result
+        return await self._execute_query(query, variables)
 
 
-# 환경변수 설정
-RAILWAY_PROJECT_ID = os.getenv("RAILWAY_PROJECT_ID")
-RAILWAY_SERVICE_ID = os.getenv("RAILWAY_SERVICE_ID")
 
-# 브랜치별 테마 매핑
-BRANCH_THEME_MAPPING = {
-    "main": "층간소음",
-    "test": "사랑하는감?",
-    # 필요시 더 추가 가능
-}
-
-
-# 편의 함수들
 async def switch_to_branch_cli(branch_name: str) -> bool:
     """
     Railway CLI를 사용한 브랜치 전환 (대안 방법)
