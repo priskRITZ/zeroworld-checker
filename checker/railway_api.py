@@ -168,7 +168,7 @@ async def switch_to_branch_cli(branch_name: str) -> bool:
 
 async def switch_to_branch(branch_name: str) -> bool:
     """
-    지정된 브랜치로 전환하고 재배포
+    지정된 브랜치로 전환하고 재배포 (CLI 사용)
     
     Args:
         branch_name: 전환할 브랜치 이름 ("main", "test" 등)
@@ -177,69 +177,25 @@ async def switch_to_branch(branch_name: str) -> bool:
         bool: 성공 여부
     """
     try:
-        # 1. 환경변수 확인 및 상세 로깅
-        api_token = os.getenv("RAILWAY_API_TOKEN")
-        project_id = os.getenv("RAILWAY_PROJECT_ID") 
-        service_id = os.getenv("RAILWAY_SERVICE_ID")
-        
-        logger.info(f"🔧 브랜치 '{branch_name}' 전환 시도...")
-        logger.info(f"  - API 토큰: {'✅ 설정됨' if api_token else '❌ 미설정'}")
-        logger.info(f"  - 프로젝트 ID: {'✅ 설정됨' if project_id else '❌ 미설정'}")
-        logger.info(f"  - 서비스 ID: {'✅ 설정됨' if service_id else '❌ 미설정'}")
-        
-        if not api_token:
-            logger.error("❌ RAILWAY_API_TOKEN 환경변수가 설정되지 않았습니다")
-            logger.error("   Railway 대시보드에서 API 토큰을 생성하고 환경변수에 추가하세요")
-            return False
-            
-        if not service_id:
-            logger.error("❌ RAILWAY_SERVICE_ID 환경변수가 설정되지 않았습니다")
-            logger.error("   Railway 대시보드에서 서비스 ID를 확인하고 환경변수에 추가하세요")
-            return False
+        logger.info(f"🔧 브랜치 '{branch_name}' 전환 시도 (CLI 방식)...")
         
         if branch_name not in BRANCH_THEME_MAPPING:
             logger.error(f"❌ 지원하지 않는 브랜치: {branch_name}")
             logger.error(f"   지원하는 브랜치: {list(BRANCH_THEME_MAPPING.keys())}")
             return False
+            
+        # Railway CLI를 사용하여 브랜치 전환
+        success = await switch_to_branch_cli(branch_name)
         
-        # 2. Railway API 클라이언트 생성
-        railway_api = RailwayAPI(api_token)
-        
-        # 2.5. 서비스 정보 먼저 확인
-        logger.info(f"📋 서비스 정보 확인 중...")
-        try:
-            service_info = await railway_api.get_service_info(service_id)
-            if service_info and "data" in service_info:
-                current_branch = service_info["data"]["service"]["source"]["branch"]
-                current_repo = service_info["data"]["service"]["source"]["repo"]
-                logger.info(f"  - 현재 브랜치: {current_branch}")
-                logger.info(f"  - 연결된 리포지토리: {current_repo}")
-                
-                if current_branch == branch_name:
-                    logger.info(f"✅ 이미 {branch_name} 브랜치입니다!")
-                    return True
-        except Exception as e:
-            logger.warning(f"⚠️ 서비스 정보 확인 실패 (계속 진행): {e}")
-        
-        # 3. 브랜치 변경
-        logger.info(f"🔄 브랜치 '{branch_name}' 변경 중...")
-        branch_result = await railway_api.update_service_branch(service_id, branch_name)
-        logger.info(f"브랜치 변경 결과: {branch_result}")
-        
-        # 4. 재배포 트리거
-        logger.info(f"🚀 재배포 트리거 중...")
-        deploy_result = await railway_api.trigger_deployment(service_id)
-        logger.info(f"재배포 결과: {deploy_result}")
-        
-        logger.info(f"✅ {branch_name} 브랜치로 성공적으로 전환되었습니다")
-        return True
-        
-    except ValueError as e:
-        logger.error(f"❌ 설정 오류: {e}")
-        return False
+        if success:
+            logger.info(f"✅ {branch_name} 브랜치로 성공적으로 전환되었습니다.")
+        else:
+            logger.error(f"❌ {branch_name} 브랜치로 전환하는 중 오류가 발생했습니다.")
+            
+        return success
+
     except Exception as e:
         logger.error(f"❌ 브랜치 전환 실패: {type(e).__name__}: {str(e)}")
-        logger.error(f"   상세 오류: {e}")
         return False
 
 
