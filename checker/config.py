@@ -19,9 +19,15 @@ except ValueError:
 # main 브랜치: "층간소음", test 브랜치: "사랑하는감?"
 BRANCH_THEME_MAPPING = {
     "main": "층간소음",
+    "master": "층간소음",
     "test": "사랑하는감?"
 }
-THEME_NAME = "층간소음"  # test 브랜치용
+
+# Railway 환경변수에서 현재 브랜치 이름 가져오기 (없을 경우 "main"을 기본값으로)
+current_branch = os.getenv("RAILWAY_GIT_BRANCH", "main")
+
+# 현재 브랜치에 맞춰 테마 이름 동적 설정
+THEME_NAME = BRANCH_THEME_MAPPING.get(current_branch, "층간소음")
 
 # Date range (starts today and extends LOOKAHEAD_DAYS days)
 today = datetime.now().date()

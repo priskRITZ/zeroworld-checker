@@ -268,12 +268,21 @@ class ZeroworldFetcher:
                     else:
                         logger.info(f"  {i+1}. 비표준 테마 데이터: {theme}")
                 
-                # 테마 목록에서 지정된 테마 찾기
+                import re
                 theme_pk = None
+
+                # 비교를 위해 한글을 제외한 모든 문자를 제거하는 함수
+                def simplify(text: str) -> str:
+                    return re.sub(r'[^가-힣]', '', text)
+
+                simplified_target_name = simplify(THEME_NAME)
+
                 for theme in data_content:
                     if isinstance(theme, dict):
                         theme_title = theme.get('title', '')
-                        if THEME_NAME in theme_title or theme_title in THEME_NAME:
+                        simplified_theme_title = simplify(theme_title)
+                        
+                        if simplified_target_name in simplified_theme_title:
                             theme_pk = theme.get('PK')
                             logger.info(f"✅ '{THEME_NAME}' 테마 발견: '{theme_title}' (PK={theme_pk})")
                             break
