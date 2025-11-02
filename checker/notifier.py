@@ -130,8 +130,9 @@ class TelegramNotifier:
                 # 시간 포맷팅: HH:MM:SS -> HH:MM
                 time_formatted = time_part[:5] if len(time_part) >= 5 else time_part
                 
-                # 메시지 라인 생성: "예약가능확인! 층간소음 7월30일, 14:00"
-                line = f"예약가능확인! 층간소음 {date_korean}, {time_formatted}"
+                # 메시지 라인 생성: "예약가능확인! {테마이름} 7월30일, 14:00"
+                from .config import THEME_NAME
+                line = f"예약가능확인! {THEME_NAME} {date_korean}, {time_formatted}"
                 message_lines.append(line)
                 
             except (ValueError, IndexError) as e:
