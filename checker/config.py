@@ -29,14 +29,12 @@ current_branch = os.getenv("RAILWAY_GIT_BRANCH", "main")
 THEME_NAME = BRANCH_THEME_MAPPING.get(current_branch, "층간소음")
 # ---
 
-# --- 날짜 설정 (동적) ---
+# --- 날짜 설정 (고정) ---
 today = datetime.now().date()
 DATE_START = today.strftime("%Y-%m-%d")  # 현재 날짜부터
 
-# LOOKAHEAD_DAYS 환경변수로 조절 가능한 기본 60일 탐색 범위
-LOOKAHEAD_DAYS = int(os.getenv("LOOKAHEAD_DAYS", "60"))
-calculated_end = today + timedelta(days=LOOKAHEAD_DAYS)
-DATE_END = calculated_end.strftime("%Y-%m-%d")
+# 사용자가 요청한 대로, 모니터링 종료 날짜를 2025년 11월 17일로 고정합니다.
+DATE_END = "2025-11-17"
 # ---
 
 # 시간 설정
