@@ -282,10 +282,10 @@ class ZeroworldChecker:
             # 2. API 연결 테스트
             logger.info("2. 제로월드 API 연결 테스트...")
             test_slots = get_slots()
-            if not test_slots:
-                logger.error("❌ API 연결 실패")
+            if test_slots is None:
+                logger.error("❌ API 연결 실패: 웹사이트와 통신할 수 없거나 페이지 구조가 변경되었을 수 있습니다.")
                 return False
-            logger.info(f"✅ API 연결 성공 ({len(test_slots)}개 슬롯)")
+            logger.info(f"✅ API 연결 성공 ({len(test_slots)}개 슬롯 발견)")
             
             # 3. 상태 관리 테스트
             logger.info("3. 상태 관리 테스트...")
