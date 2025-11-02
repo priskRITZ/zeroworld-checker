@@ -19,10 +19,12 @@ except ValueError:
 # main 브랜치: "층간소음", test 브랜치: "사랑하는감?"
 THEME_NAME = "층간소음"  # test 브랜치용
 
-# 날짜 범위 설정 (현재 날짜부터 8월 16일까지)
+# Date range (starts today and extends LOOKAHEAD_DAYS days)
 today = datetime.now().date()
 DATE_START = today.strftime("%Y-%m-%d")  # 현재 날짜부터
-DATE_END = "2025-08-16"    # 8월 16일까지
+# LOOKAHEAD_DAYS 환경변수로 조절 가능한 기본 60일 탐색 범위
+LOOKAHEAD_DAYS = int(os.getenv("LOOKAHEAD_DAYS", "60"))
+DATE_END = (today + timedelta(days=max(LOOKAHEAD_DAYS, 7))).strftime("%Y-%m-%d")
 
 # 시간 설정
 TIMEZONE = "Asia/Seoul"
